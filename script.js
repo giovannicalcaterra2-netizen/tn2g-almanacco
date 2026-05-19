@@ -1,11 +1,15 @@
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSzOoXRGax2NR3sUI-2ai-fI2nKi_Hq2zkxBGGxDMpTqjxOYYn1JK9YJt6J4uEngoVX7N0BZaigLkz4/pub?gid=0&single=true&output=csv";
-const GOOGLE_CALENDAR_SUBSCRIBE_URL = "https://calendar.google.com/calendar/u/0?cid=NDA3NTJiYjgzZGZjNDcyOTRkM2Y2ODAyYTE5M2E2ZmVlZGIxOGYyNjRkN2MzMzEyYWZkNDk5MDM3ZDFjYzdiMEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t";
+const CALENDAR_ID = "40752bb83dfc47294d3f6802a193a6feedb18f264d7c3312afd499037d1cc7b0@group.calendar.google.com";
+const ENCODED_CALENDAR_ID = encodeURIComponent(CALENDAR_ID);
+const GOOGLE_CALENDAR_SUBSCRIBE_URL = `https://calendar.google.com/calendar/u/0/r?cid=${ENCODED_CALENDAR_ID}`;
+const ICS_URL = `https://calendar.google.com/calendar/ical/${ENCODED_CALENDAR_ID}/public/basic.ics`;
+const WEBCAL_URL = ICS_URL.replace("https://", "webcal://");
 
 let events = [];
 let currentDate = new Date();
 
 document.addEventListener("DOMContentLoaded", async () => {
-  document.getElementById("googleCalendarButton").href = GOOGLE_CALENDAR_SUBSCRIBE_URL;
+  setupSubscriptionButtons();
 
   document.getElementById("prevMonth").addEventListener("click", () => {
     currentDate.setMonth(currentDate.getMonth() - 1);
@@ -20,6 +24,52 @@ document.addEventListener("DOMContentLoaded", async () => {
   events = await loadEvents();
   renderAll();
 });
+
+function setupSubscriptionButtons() {
+  const mainGoogleButton = document.getElementById("googleCalendarButton");
+  const secondaryGoogleButton = document.getElementById("googleCalendarButtonSecondary");
+  const appleButton = document.getElementById("appleCalendarButton");
+  const copyButton = document.getElementById("copyIcsButton");
+  const deviceHelp = document.getElementById("deviceHelp");
+  const iosInstructions = document.getElementById("iosInstructions");
+
+  if (mainGoogleButton) mainGoogleButton.href = GOOGLE_CALENDAR_SUBSCRIBE_URL;
+  if (secondaryGoogleButton) secondaryGoogleButton.href = GOOGLE_CALENDAR_SUBSCRIBE_URL;
+  if (appleButton) appleButton.href = WEBCAL_URL;
+
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+
+  if (isIOS) {
+    if (mainGoogleButton) {
+      mainGoogleButton.href = WEBCAL_URL;
+      mainGoogleButton.textContent = "🍎 Iscriviti da iPhone";
+    }
+    if (deviceHelp) {
+      deviceHelp.textContent = "Su iPhone conviene usare Apple Calendar: si apre l'abbonamento al calendario e poi confermi.";
+    }
+    if (iosInstructions) iosInstructions.classList.remove("hidden");
+  } else if (isAndroid) {
+    if (deviceHelp) {
+      deviceHelp.textContent = "Su Android usa Google Calendar: confermi una volta e poi gli aggiornamenti arrivano automaticamente.";
+    }
+  }
+
+  if (copyButton) {
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(ICS_URL);
+        copyButton.textContent = "✅ Link copiato";
+      } catch (error) {
+        copyButton.textContent = "Copia manualmente il link ICS";
+      }
+      setTimeout(() => {
+        copyButton.textContent = "🔗 Copia link calendario";
+      }, 2500);
+    });
+  }
+}
 
 async function loadEvents() {
   const response = await fetch(CSV_URL);
