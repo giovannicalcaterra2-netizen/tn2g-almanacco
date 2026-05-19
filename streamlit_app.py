@@ -5,6 +5,7 @@ import pandas as pd
 import requests
 import streamlit as st
 
+PUBLIC_INTERFACE_URL = "https://giovannicalcaterra2-netizen.github.io/tn2g-almanacco/"
 
 EXPECTED_COLUMNS = [
     "id",
@@ -25,8 +26,7 @@ EXPECTED_COLUMNS = [
     "calendar_event_id",
 ]
 
-CATEGORIE = [
-    "compleanno",
+EVENT_CATEGORIES = [
     "evento",
     "aperitivo",
     "outdoor",
@@ -37,8 +37,8 @@ CATEGORIE = [
     "sport",
 ]
 
+FILTER_CATEGORIES = ["compleanno"] + EVENT_CATEGORIES
 TIPI = ["compleanno", "evento"]
-
 SEGNI = [
     "Ariete",
     "Toro",
@@ -54,12 +54,7 @@ SEGNI = [
     "Pesci",
 ]
 
-
-st.set_page_config(
-    page_title="TN2G Almanacco Admin",
-    page_icon="🔱",
-    layout="wide",
-)
+st.set_page_config(page_title="TN2G Almanacco Admin", page_icon="🔱", layout="wide")
 
 
 def clean(value):
@@ -108,337 +103,261 @@ def format_time(value):
 def load_archive(csv_url: str) -> pd.DataFrame:
     if not csv_url:
         return pd.DataFrame(columns=EXPECTED_COLUMNS)
-
     try:
         df = pd.read_csv(csv_url)
     except Exception:
         return pd.DataFrame(columns=EXPECTED_COLUMNS)
-
     for col in EXPECTED_COLUMNS:
         if col not in df.columns:
             df[col] = ""
-
     return df[EXPECTED_COLUMNS]
 
 
 def login_gate() -> bool:
     password = st.secrets.get("ADMIN_PASSWORD", "")
-
     if not password:
         return True
-
     if st.session_state.get("authenticated"):
         return True
-
     st.title("🔱 TN2G Almanacco Admin")
     entered = st.text_input("Password admin", type="password")
-
     if st.button("Entra"):
         if entered == password:
             st.session_state["authenticated"] = True
             st.rerun()
         else:
             st.error("Password sbagliata.")
-
     return False
 
 
 def post_to_apps_script(record: dict) -> dict:
     webhook_url = st.secrets.get("APPS_SCRIPT_URL", "")
     token = st.secrets.get("APPS_SCRIPT_TOKEN", "")
-
     if not webhook_url:
-        return {
-            "ok": False,
-            "error": "Manca APPS_SCRIPT_URL nei secrets Streamlit.",
-        }
-
+        return {"ok": False, "error": "Manca APPS_SCRIPT_URL nei secrets Streamlit."}
     if not token:
-        return {
-            "ok": False,
-            "error": "Manca APPS_SCRIPT_TOKEN nei secrets Streamlit.",
-        }
-
+        return {"ok": False, "error": "Manca APPS_SCRIPT_TOKEN nei secrets Streamlit."}
     payload = dict(record)
     payload["token"] = token
-
     response = requests.post(webhook_url, json=payload, timeout=20)
-
     try:
         return response.json()
     except Exception:
-        return {
-            "ok": False,
-            "error": response.text,
-        }
+        return {"ok": False, "error": response.text}
 
 
 def find_duplicates(df: pd.DataFrame, record: dict) -> pd.DataFrame:
     if df.empty:
         return df
-
     same_type = df["tipo"].astype(str).str.lower().str.strip() == record["tipo"].lower()
     same_date = df["data"].astype(str).str.strip() == record["data"]
-
     if record["tipo"] == "compleanno":
         same_name = df["nome"].astype(str).str.lower().str.strip() == record["nome"].lower()
         return df[same_type & same_date & same_name]
-
     same_title = df["titolo"].astype(str).str.lower().str.strip() == record["titolo"].lower()
     return df[same_type & same_date & same_title]
+
+
+def build_base_record(tipo: str, pubblica: str, data_evento: date) -> dict:
+    return {
+        "id": make_id(tipo),
+        "pubblica": pubblica,
+        "tipo": tipo,
+        "titolo": "",
+        "nome": "",
+        "data": data_evento.isoformat(),
+        "ora_inizio": "",
+        "ora_fine": "",
+        "categoria": "",
+        "luogo": "",
+        "segno": "",
+        "oroscopo": "",
+        "descrizione": "",
+        "link": "",
+        "ricorrente": "no",
+        "calendar_event_id": "",
+    }
+
+
+def render_birthday_form():
+    st.markdown("### 🎂 Nuovo compleanno")
+    with st.form("birthday_form", clear_on_submit=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            pubblica = st.selectbox("Stato", ["si", "bozza"], key="birthday_pubblica")
+            nome = st.text_input("Nome persona", placeholder="Es. Leti")
+        with c2:
+            data_evento = st.date_input("Data compleanno", value=date.today(), format="YYYY-MM-DD", key="birthday_date")
+            segno_auto = zodiac_sign(data_evento.day, data_evento.month)
+            segno = st.selectbox("Segno zodiacale", SEGNI, index=SEGNI.index(segno_auto))
+        titolo_custom = st.text_input("Titolo personalizzato opzionale", placeholder="Lascia vuoto per: Compleanno di Nome 🎂")
+        oroscopo = st.text_area("Oroscopo / nota TN2G", placeholder="Es. Vietato ghostare gli auguri.", height=90)
+        descrizione = st.text_area("Descrizione extra", placeholder="Opzionale.", height=80)
+        link = st.text_input("Link opzionale", placeholder="https://...")
+        submitted = st.form_submit_button("Controlla riepilogo")
+
+    if not submitted:
+        return
+
+    errors = []
+    if not clean(nome):
+        errors.append("Inserisci il nome della persona.")
+
+    record = build_base_record("compleanno", pubblica, data_evento)
+    record.update({
+        "titolo": clean(titolo_custom) or f"Compleanno di {clean(nome)} 🎂",
+        "nome": clean(nome),
+        "categoria": "compleanno",
+        "segno": clean(segno),
+        "oroscopo": clean(oroscopo),
+        "descrizione": clean(descrizione),
+        "link": clean(link),
+        "ricorrente": "annuale",
+    })
+
+    if errors:
+        for error in errors:
+            st.error(error)
+    else:
+        st.session_state["pending_record"] = record
+
+
+def render_event_form():
+    st.markdown("### 🔱 Nuovo evento")
+    with st.form("event_form", clear_on_submit=False):
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            pubblica = st.selectbox("Stato", ["si", "bozza"], key="event_pubblica")
+        with c2:
+            categoria = st.selectbox("Categoria evento", EVENT_CATEGORIES)
+        with c3:
+            data_evento = st.date_input("Data evento", value=date.today(), format="YYYY-MM-DD", key="event_date")
+
+        titolo = st.text_input("Titolo evento", placeholder="Es. Aperitivo TN2G")
+        all_day = st.checkbox("Evento tutto il giorno", value=False)
+        ora_inizio = ""
+        ora_fine = ""
+        if not all_day:
+            c1, c2 = st.columns(2)
+            with c1:
+                ora_inizio = st.time_input("Ora inizio", value=time(20, 30), step=900)
+            with c2:
+                ora_fine = st.time_input("Ora fine", value=time(23, 30), step=900)
+        luogo = st.text_input("Luogo", placeholder="Es. Bar Verdi")
+        descrizione = st.text_area("Descrizione", placeholder="Info utili per i membri.", height=110)
+        link = st.text_input("Link opzionale", placeholder="https://...")
+        ricorrente = st.selectbox("Ricorrenza", ["no", "annuale"])
+        submitted = st.form_submit_button("Controlla riepilogo")
+
+    if not submitted:
+        return
+
+    errors = []
+    if not clean(titolo):
+        errors.append("Inserisci il titolo dell'evento.")
+
+    record = build_base_record("evento", pubblica, data_evento)
+    record.update({
+        "titolo": clean(titolo),
+        "ora_inizio": format_time(ora_inizio),
+        "ora_fine": format_time(ora_fine),
+        "categoria": clean(categoria),
+        "luogo": clean(luogo),
+        "descrizione": clean(descrizione),
+        "link": clean(link),
+        "ricorrente": ricorrente,
+    })
+
+    if errors:
+        for error in errors:
+            st.error(error)
+    else:
+        st.session_state["pending_record"] = record
+
+
+def render_pending_record(df: pd.DataFrame):
+    pending = st.session_state.get("pending_record")
+    if not pending:
+        return
+    st.divider()
+    st.subheader("Riepilogo prima del salvataggio")
+    st.dataframe(pd.DataFrame([pending]), use_container_width=True, hide_index=True)
+    duplicates = find_duplicates(df, pending)
+    if not duplicates.empty:
+        st.warning("Possibile duplicato trovato. Controlla prima di salvare.")
+        st.dataframe(duplicates, use_container_width=True, hide_index=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("✅ Salva nel Google Sheet", type="primary"):
+            result = post_to_apps_script(pending)
+            if result.get("ok"):
+                st.success("Elemento salvato correttamente nel Google Sheet.")
+                del st.session_state["pending_record"]
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                st.error(result.get("error", "Errore sconosciuto."))
+    with c2:
+        if st.button("Annulla"):
+            del st.session_state["pending_record"]
+            st.rerun()
 
 
 if not login_gate():
     st.stop()
 
-
-st.title("🔱 TN2G Almanacco Admin")
-st.caption("Tool semplice per caricare compleanni ed eventi senza toccare direttamente il Google Sheet.")
+header_left, header_right = st.columns([3, 1])
+with header_left:
+    st.title("🔱 TN2G Almanacco Admin")
+    st.caption("Tool semplice per caricare compleanni ed eventi senza toccare direttamente il Google Sheet.")
+with header_right:
+    st.link_button("👀 Visualizza interfaccia", PUBLIC_INTERFACE_URL, use_container_width=True)
 
 CSV_URL = st.secrets.get("CSV_URL", "")
 df = load_archive(CSV_URL)
 
 st.sidebar.header("📊 Riepilogo")
 st.sidebar.metric("Record totali", len(df))
-
 if not df.empty:
     published = df["pubblica"].astype(str).str.lower().isin(["si", "sì", "yes"]).sum()
     birthdays = (df["tipo"].astype(str).str.lower() == "compleanno").sum()
     events = (df["tipo"].astype(str).str.lower() == "evento").sum()
-
     st.sidebar.metric("Pubblicati", int(published))
     st.sidebar.metric("Compleanni", int(birthdays))
     st.sidebar.metric("Eventi", int(events))
 
-
-tab_add, tab_archive, tab_setup = st.tabs(
-    ["➕ Aggiungi", "📚 Archivio", "⚙️ Setup"]
-)
-
+tab_add, tab_archive, tab_setup = st.tabs(["➕ Aggiungi", "📚 Archivio", "⚙️ Setup"])
 
 with tab_add:
-    st.subheader("Nuovo caricamento")
-
-    with st.form("new_record_form", clear_on_submit=False):
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            tipo = st.selectbox("Tipo", TIPI)
-
-        with col2:
-            default_category = "compleanno" if tipo == "compleanno" else "evento"
-            categoria = st.selectbox(
-                "Categoria",
-                CATEGORIE,
-                index=CATEGORIE.index(default_category),
-            )
-
-        with col3:
-            pubblica = st.selectbox("Stato", ["si", "bozza"])
-
-        data_evento = st.date_input(
-            "Data",
-            value=date.today(),
-            format="YYYY-MM-DD",
-        )
-
-        nome = ""
-        titolo = ""
-        segno = ""
-        oroscopo = ""
-        descrizione = ""
-        link = ""
-        luogo = ""
-        ora_inizio = ""
-        ora_fine = ""
-        ricorrente = "no"
-
-        if tipo == "compleanno":
-            c1, c2 = st.columns(2)
-
-            with c1:
-                nome = st.text_input("Nome persona", placeholder="Es. Leti")
-
-            with c2:
-                segno_auto = zodiac_sign(data_evento.day, data_evento.month)
-                segno = st.selectbox(
-                    "Segno zodiacale",
-                    SEGNI,
-                    index=SEGNI.index(segno_auto),
-                )
-
-            titolo = f"Compleanno di {nome} 🎂" if nome else ""
-            ricorrente = "annuale"
-
-            oroscopo = st.text_area(
-                "Oroscopo / nota TN2G",
-                placeholder="Es. Vietato ghostare gli auguri.",
-                height=90,
-            )
-
-            descrizione = st.text_area(
-                "Descrizione extra",
-                placeholder="Opzionale.",
-                height=80,
-            )
-
-        else:
-            titolo = st.text_input(
-                "Titolo evento",
-                placeholder="Es. Aperitivo TN2G",
-            )
-
-            all_day = st.checkbox("Evento tutto il giorno", value=False)
-
-            if not all_day:
-                c1, c2 = st.columns(2)
-
-                with c1:
-                    ora_inizio = st.time_input(
-                        "Ora inizio",
-                        value=time(20, 30),
-                        step=900,
-                    )
-
-                with c2:
-                    ora_fine = st.time_input(
-                        "Ora fine",
-                        value=time(23, 30),
-                        step=900,
-                    )
-
-            luogo = st.text_input("Luogo", placeholder="Es. Bar Verdi")
-
-            descrizione = st.text_area(
-                "Descrizione",
-                placeholder="Info utili per i membri.",
-                height=110,
-            )
-
-            link = st.text_input("Link opzionale", placeholder="https://...")
-
-            ricorrente = st.selectbox("Ricorrenza", ["no", "annuale"])
-
-        submitted = st.form_submit_button("Controlla riepilogo")
-
-    if submitted:
-        errors = []
-
-        if tipo == "compleanno" and not clean(nome):
-            errors.append("Inserisci il nome della persona.")
-
-        if tipo == "evento" and not clean(titolo):
-            errors.append("Inserisci il titolo dell'evento.")
-
-        record = {
-            "id": make_id(tipo),
-            "pubblica": pubblica,
-            "tipo": tipo,
-            "titolo": clean(titolo),
-            "nome": clean(nome),
-            "data": data_evento.isoformat(),
-            "ora_inizio": format_time(ora_inizio),
-            "ora_fine": format_time(ora_fine),
-            "categoria": categoria,
-            "luogo": clean(luogo),
-            "segno": clean(segno),
-            "oroscopo": clean(oroscopo),
-            "descrizione": clean(descrizione),
-            "link": clean(link),
-            "ricorrente": ricorrente,
-            "calendar_event_id": "",
-        }
-
-        if errors:
-            for error in errors:
-                st.error(error)
-        else:
-            st.session_state["pending_record"] = record
-
-    pending = st.session_state.get("pending_record")
-
-    if pending:
-        st.divider()
-        st.subheader("Riepilogo prima del salvataggio")
-
-        st.dataframe(
-            pd.DataFrame([pending]),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        duplicates = find_duplicates(df, pending)
-
-        if not duplicates.empty:
-            st.warning("Possibile duplicato trovato. Controlla prima di salvare.")
-            st.dataframe(
-                duplicates,
-                use_container_width=True,
-                hide_index=True,
-            )
-
-        c1, c2 = st.columns(2)
-
-        with c1:
-            if st.button("✅ Salva nel Google Sheet", type="primary"):
-                result = post_to_apps_script(pending)
-
-                if result.get("ok"):
-                    st.success("Elemento salvato correttamente nel Google Sheet.")
-                    del st.session_state["pending_record"]
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error(result.get("error", "Errore sconosciuto."))
-
-        with c2:
-            if st.button("Annulla"):
-                del st.session_state["pending_record"]
-                st.rerun()
-
+    st.subheader("Scegli cosa vuoi caricare")
+    tipo = st.radio("Tipo elemento", TIPI, horizontal=True)
+    if tipo == "compleanno":
+        render_birthday_form()
+    else:
+        render_event_form()
+    render_pending_record(df)
 
 with tab_archive:
     st.subheader("Archivio già caricato")
-
     if df.empty:
         st.info("Nessun elemento caricato oppure CSV non configurato.")
     else:
         c1, c2, c3 = st.columns(3)
-
         with c1:
             tipo_filter = st.selectbox("Tipo", ["tutti"] + TIPI)
-
         with c2:
-            categoria_filter = st.selectbox("Categoria", ["tutte"] + CATEGORIE)
-
+            categoria_filter = st.selectbox("Categoria", ["tutte"] + FILTER_CATEGORIES)
         with c3:
             stato_filter = st.selectbox("Stato", ["tutti", "si", "bozza"])
-
         filtered = df.copy()
-
         if tipo_filter != "tutti":
-            filtered = filtered[
-                filtered["tipo"].astype(str).str.lower() == tipo_filter
-            ]
-
+            filtered = filtered[filtered["tipo"].astype(str).str.lower() == tipo_filter]
         if categoria_filter != "tutte":
-            filtered = filtered[
-                filtered["categoria"].astype(str).str.lower() == categoria_filter
-            ]
-
+            filtered = filtered[filtered["categoria"].astype(str).str.lower() == categoria_filter]
         if stato_filter != "tutti":
-            filtered = filtered[
-                filtered["pubblica"].astype(str).str.lower() == stato_filter
-            ]
-
+            filtered = filtered[filtered["pubblica"].astype(str).str.lower() == stato_filter]
         filtered = filtered.sort_values("data", ascending=True)
-
-        st.dataframe(
-            filtered,
-            use_container_width=True,
-            hide_index=True,
-        )
-
+        st.dataframe(filtered, use_container_width=True, hide_index=True)
         st.download_button(
             "Scarica CSV filtrato",
             filtered.to_csv(index=False).encode("utf-8"),
@@ -446,17 +365,11 @@ with tab_archive:
             "text/csv",
         )
 
-
 with tab_setup:
     st.subheader("Setup Streamlit secrets")
-
     st.markdown(
         """
-        Su Streamlit Cloud vai su:
-
-        `Settings → Secrets`
-
-        e inserisci queste variabili:
+        Su Streamlit Cloud vai su `Settings → Secrets` e inserisci:
 
         ```toml
         ADMIN_PASSWORD = "password-per-le-ragazze"
