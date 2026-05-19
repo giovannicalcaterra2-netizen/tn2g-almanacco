@@ -48,15 +48,32 @@ h1 {
 }
 
 .button {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
   text-decoration: none;
   border-radius: 999px;
   padding: 14px 20px;
   font-weight: 800;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
 }
 
-.primary {
+.primary,
+.light {
   background: white;
+  color: #111;
+}
+
+.dark {
+  background: #111;
+  color: white;
+}
+
+.ghost {
+  background: #f0f0f0;
   color: #111;
 }
 
@@ -70,6 +87,35 @@ h1 {
 
 .panel h2 {
   margin-top: 0;
+}
+
+.subscribe-panel {
+  border: 2px solid #111;
+}
+
+.helper-text {
+  color: #555;
+  margin-top: -6px;
+}
+
+.subscribe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.instructions {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #f5f5f5;
+  color: #333;
+  line-height: 1.45;
+}
+
+.hidden {
+  display: none;
 }
 
 .cards {
@@ -189,6 +235,17 @@ footer {
     flex-direction: column;
     align-items: flex-start;
     padding: 24px;
+  }
+
+  .hero-actions,
+  .hero-actions .button,
+  .subscribe-actions,
+  .subscribe-actions .button {
+    width: 100%;
+  }
+
+  .subscribe-actions {
+    flex-direction: column;
   }
 
   .day {
