@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>TN2G Almanacco</title>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">🔱 TN2G</p>
+        <h1>Almanacco</h1>
+        <p class="subtitle">
+          Compleanni, eventi e date da non dimenticare.
+        </p>
+      </div>
+
+      <div class="hero-actions">
+        <a id="googleCalendarButton" class="button primary" target="_blank">
+          📲 Iscriviti
+        </a>
+      </div>
+    </header>
+
+    <section class="panel today-panel">
+      <h2>Oggi succede</h2>
+      <div id="todayEvents" class="cards"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Prossimi eventi</h2>
+      <div id="upcomingEvents" class="cards"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Compleanni del mese</h2>
+      <div id="birthdayEvents" class="cards"></div>
+    </section>
+
+    <section class="panel">
+      <div class="calendar-header">
+        <button id="prevMonth" class="small-button">←</button>
+        <h2 id="calendarTitle">Calendario</h2>
+        <button id="nextMonth" class="small-button">→</button>
+      </div>
+
+      <div class="weekdays">
+        <span>Lun</span>
+        <span>Mar</span>
+        <span>Mer</span>
+        <span>Gio</span>
+        <span>Ven</span>
+        <span>Sab</span>
+        <span>Dom</span>
+      </div>
+
+      <div id="calendarGrid" class="calendar-grid"></div>
+    </section>
+
+    <footer>
+      <p>
+        Una volta iscritto, il calendario si aggiorna automaticamente.
+        Per cambi last minute fa sempre fede la bacheca WhatsApp.
+      </p>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
