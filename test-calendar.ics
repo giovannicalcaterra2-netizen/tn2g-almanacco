@@ -27,52 +27,92 @@ END:STANDARD
 END:VTIMEZONE
 
 BEGIN:VEVENT
-UID:tn2g-test-20260520-1200@trentogether.it
-DTSTAMP:20260520T000000Z
-DTSTART;TZID=Europe/Rome:20260520T120000
-DTEND;TZID=Europe/Rome:20260520T121500
-SUMMARY:TN2G Test notifica 1
-DESCRIPTION:Se ricevi questa notifica, il calendario custom con VALARM sta funzionando.
+UID:tn2g-fast-test-20260520-0235@trentogether.it
+DTSTAMP:20260520T002500Z
+DTSTART;TZID=Europe/Rome:20260520T023500
+DTEND;TZID=Europe/Rome:20260520T024000
+SUMMARY:TN2G Test rapido 02:35
+DESCRIPTION:Test rapido con reminder a 5 minuti e 1 minuto.
+LOCATION:Trento
+BEGIN:VALARM
+ACTION:DISPLAY
+TRIGGER:-PT5M
+DESCRIPTION:TN2G test rapido: evento tra 5 minuti.
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+TRIGGER:-PT1M
+DESCRIPTION:TN2G test rapido: evento tra 1 minuto.
+END:VALARM
+END:VEVENT
+
+BEGIN:VEVENT
+UID:tn2g-fast-test-20260520-0245@trentogether.it
+DTSTAMP:20260520T002500Z
+DTSTART;TZID=Europe/Rome:20260520T024500
+DTEND;TZID=Europe/Rome:20260520T025000
+SUMMARY:TN2G Test rapido 02:45
+DESCRIPTION:Secondo test rapido con reminder a 10 minuti e 2 minuti.
 LOCATION:Trento
 BEGIN:VALARM
 ACTION:DISPLAY
 TRIGGER:-PT10M
-DESCRIPTION:TN2G test: evento tra 10 minuti.
+DESCRIPTION:TN2G test rapido: evento tra 10 minuti.
 END:VALARM
 BEGIN:VALARM
 ACTION:DISPLAY
 TRIGGER:-PT2M
-DESCRIPTION:TN2G test: evento tra 2 minuti.
+DESCRIPTION:TN2G test rapido: evento tra 2 minuti.
 END:VALARM
 END:VEVENT
 
 BEGIN:VEVENT
-UID:tn2g-test-20260520-1800@trentogether.it
-DTSTAMP:20260520T000000Z
-DTSTART;TZID=Europe/Rome:20260520T180000
-DTEND;TZID=Europe/Rome:20260520T181500
-SUMMARY:TN2G Test notifica 2
-DESCRIPTION:Secondo evento di test per verificare se i reminder vengono mantenuti.
+UID:tn2g-fast-test-20260520-0300@trentogether.it
+DTSTAMP:20260520T002500Z
+DTSTART;TZID=Europe/Rome:20260520T030000
+DTEND;TZID=Europe/Rome:20260520T030500
+SUMMARY:TN2G Test rapido 03:00
+DESCRIPTION:Terzo test rapido per verificare refresh e notifiche.
 LOCATION:Trento
 BEGIN:VALARM
 ACTION:DISPLAY
-TRIGGER:-PT30M
-DESCRIPTION:TN2G test: evento tra 30 minuti.
+TRIGGER:-PT15M
+DESCRIPTION:TN2G test rapido: evento tra 15 minuti.
 END:VALARM
 BEGIN:VALARM
 ACTION:DISPLAY
 TRIGGER:-PT5M
-DESCRIPTION:TN2G test: evento tra 5 minuti.
+DESCRIPTION:TN2G test rapido: evento tra 5 minuti.
 END:VALARM
 END:VEVENT
 
 BEGIN:VEVENT
-UID:tn2g-test-20260521-1200@trentogether.it
-DTSTAMP:20260520T000000Z
+UID:tn2g-fast-test-20260520-0900@trentogether.it
+DTSTAMP:20260520T002500Z
+DTSTART;TZID=Europe/Rome:20260520T090000
+DTEND;TZID=Europe/Rome:20260520T091500
+SUMMARY:TN2G Test mattina 09:00
+DESCRIPTION:Test di sicurezza per verificare le notifiche dopo qualche ora di sincronizzazione.
+LOCATION:Trento
+BEGIN:VALARM
+ACTION:DISPLAY
+TRIGGER:-PT30M
+DESCRIPTION:TN2G test mattina: evento tra 30 minuti.
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+TRIGGER:-PT10M
+DESCRIPTION:TN2G test mattina: evento tra 10 minuti.
+END:VALARM
+END:VEVENT
+
+BEGIN:VEVENT
+UID:tn2g-fast-test-20260521-1200@trentogether.it
+DTSTAMP:20260520T002500Z
 DTSTART;TZID=Europe/Rome:20260521T120000
 DTEND;TZID=Europe/Rome:20260521T121500
-SUMMARY:TN2G Test notifica domani
-DESCRIPTION:Evento di test del giorno successivo con reminder a 24 ore e 10 minuti.
+SUMMARY:TN2G Test domani 12:00
+DESCRIPTION:Test del giorno successivo con reminder a 24 ore e 10 minuti.
 LOCATION:Trento
 BEGIN:VALARM
 ACTION:DISPLAY
